@@ -45,7 +45,10 @@ public class TerrainGenerator : MonoBehaviour
 
     private Vector2 followedCurrentPosition;
 
-    private static float a = 0;
+    private static float a;
+    private int orderingOffset;
+    private bool updateOffset;
+    private int mapSize;
 
     // Use this for initialization
     void Start()
@@ -53,7 +56,8 @@ public class TerrainGenerator : MonoBehaviour
         spriteOffset.x = sprite.bounds.extents.x;
         spriteOffset.y = sprite.bounds.extents.y / 2;
 
-        objectMap = new Dictionary<Vector2, GameObject>((int)(size.x * 2 * size.y * 2), new Vector2Comparer());
+        mapSize = (int)(size.x * 2 * size.y * 2);
+        objectMap = new Dictionary<Vector2, GameObject>(mapSize, new Vector2Comparer());
 
         for (int y = (int)-size.y; y < size.y; y++)
         {
@@ -64,6 +68,8 @@ public class TerrainGenerator : MonoBehaviour
         }
 
         followedCurrentPosition = FromIsometric(followed.transform.position.x, followed.transform.position.y);
+
+        updateOffset = false;
     }
 
     // Update is called once per frame
@@ -74,6 +80,27 @@ public class TerrainGenerator : MonoBehaviour
         pos -= followedCurrentPosition;
 
         Move(pos);
+
+        //If sorting layer is near the int limits, let's reorder adding a offset to get away from limit.
+        if (updateOffset)
+        {
+            orderingOffset = (orderingOffset == 0) ? 10000 : 0;
+
+            foreach (KeyValuePair<Vector2, GameObject> pair in objectMap)
+            {
+                if (pair.Value == null)
+                    continue;
+
+                SpriteRenderer r = pair.Value.GetComponent<SpriteRenderer>();
+
+                if (r != null)
+                {
+                    r.sortingOrder = -((int)pair.Key.x + orderingOffset) * (int)size.y + -((int)pair.Key.y + orderingOffset);
+                }
+            }
+
+            updateOffset = false;
+        }
     }
 
     private void AddVoxel(int x, int y)
@@ -102,12 +129,14 @@ public class TerrainGenerator : MonoBehaviour
         SpriteRenderer renderer = go.AddComponent<SpriteRenderer>();
         renderer.sprite = FindSprite(type);
         renderer.sortingLayerName = "Terrain";
-        Vector3 pos = ToIsometric(x, y);
-
-        pos.z = x + (y / 1.000f);
-
-        go.transform.position = pos;
+        renderer.sortingOrder = -(x + orderingOffset) * (int)size.y + -(y + orderingOffset);
+        go.transform.position = ToIsometric(x, y);
         go.transform.parent = gameObject.transform;
+
+        if (Mathf.Abs(renderer.sortingOrder) > 32000)
+        {
+            updateOffset = true;
+        }
     }
 
     private void RemoveVoxel(int x, int y)
@@ -149,7 +178,7 @@ public class TerrainGenerator : MonoBehaviour
 
     private void Move(Vector2 movement)
     {
-        
+
         if (movement.x == 0 && movement.y == 0)
         {
             return;
