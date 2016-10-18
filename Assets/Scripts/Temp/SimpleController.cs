@@ -4,6 +4,7 @@ using System.Collections;
 public class SimpleController : MonoBehaviour {
 
     public float speed = 2f;
+    public TerrainGenerator generator;
 
 	// Use this for initialization
 	void Start () {

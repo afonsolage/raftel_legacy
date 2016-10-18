@@ -35,15 +35,15 @@ public class Vector2Comparer : IEqualityComparer<Vector2>
 public class TerrainGenerator : MonoBehaviour
 {
     public Vector2 size;
+
     public Transform followed;
 
+    public GameObject destroyEffect;
     public List<TerrainVoxel> voxelList;
     private Dictionary<Vector2, GameObject> objectMap;
-
     private Vector3 followedCurrentPosition;
 
     public int orderingOffset { get; set; }
-    private static float a;
     private bool updateOffset;
     private int mapSize;
 
@@ -194,6 +194,21 @@ public class TerrainGenerator : MonoBehaviour
 
         Debug.LogError("Invalid TerrainType: " + type);
         return voxelList[0].prefab;
+    }
+
+    public void AddDestroyCubeEffect(GameObject go)
+    {
+        GameObject effect = Instantiate(destroyEffect);
+
+        Renderer renderer = go.GetComponent<Renderer>();
+        Renderer effectRenderer = effect.GetComponent<Renderer>();
+
+        if (renderer == null || effectRenderer == null)
+            return;
+
+        effectRenderer.material = renderer.material;
+
+        effect.transform.position = go.transform.position;
     }
 
     private void Move(Vector3 movement)
