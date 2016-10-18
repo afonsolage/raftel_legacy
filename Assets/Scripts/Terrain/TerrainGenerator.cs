@@ -204,38 +204,41 @@ public class TerrainGenerator : MonoBehaviour
             return;
         }
 
-        Debug.Log("Moving: " + movement);
-
         if (movement.x >= 1.0f)
         {
             //Move right
-
-            for (int y = (int)-size.y; y < size.y; y++)
+            for (int a = 0; a < movement.x; movement.x--)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
-            }
+                for (int y = (int)-size.y; y < size.y; y++)
+                {
+                    RemoveVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
+                }
 
-            for (int y = (int)-size.y; y < size.y; y++)
-            {
-                AddVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
-            }
+                for (int y = (int)-size.y; y < size.y; y++)
+                {
+                    AddVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
+                }
 
-            followedCurrentPosition.x += movement.x;
+                followedCurrentPosition.x += 1;
+            }
         }
         else if (movement.x <= -1.0f)
         {
             //Move left
 
-            followedCurrentPosition.x += movement.x;
-
-            for (int y = (int)-size.y; y < size.y; y++)
+            for (int a = 0; a > movement.x; movement.x++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
-            }
+                followedCurrentPosition.x -= 1;
 
-            for (int y = (int)-size.y; y < size.y; y++)
-            {
-                AddVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
+                for (int y = (int)-size.y; y < size.y; y++)
+                {
+                    RemoveVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
+                }
+
+                for (int y = (int)-size.y; y < size.y; y++)
+                {
+                    AddVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
+                }
             }
         }
 
@@ -243,32 +246,38 @@ public class TerrainGenerator : MonoBehaviour
         {
             //Move up
 
-            for (int x = (int)-size.x; x < size.x; x++)
+            for (int a = 0; a < movement.z; movement.z--)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
-            }
 
-            for (int x = (int)-size.x; x < size.x; x++)
-            {
-                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
-            }
+                for (int x = (int)-size.x; x < size.x; x++)
+                {
+                    RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
+                }
 
-            followedCurrentPosition.z += movement.z;
+                for (int x = (int)-size.x; x < size.x; x++)
+                {
+                    AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
+                }
+
+                followedCurrentPosition.z += 1;
+            }
         }
         else if (movement.z <= -1.0f)
         {
             //Move down
-
-            followedCurrentPosition.z += movement.z;
-
-            for (int x = (int)-size.x; x < size.x; x++)
+            for (int a = 0; a > movement.z; movement.z++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
-            }
+                followedCurrentPosition.z -= 1;
 
-            for (int x = (int)-size.x; x < size.x; x++)
-            {
-                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
+                for (int x = (int)-size.x; x < size.x; x++)
+                {
+                    RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
+                }
+
+                for (int x = (int)-size.x; x < size.x; x++)
+                {
+                    AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
+                }
             }
 
         }
