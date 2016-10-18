@@ -8,10 +8,12 @@ public enum TerrainType
     GRASS,
     ROCK,
     DIRT,
+    WOOD,
+    LEAF,
 }
 
 [System.Serializable]
-public class TerrainSprite
+public struct TerrainSprite
 {
     public TerrainType type;
     public Sprite sprite;
@@ -40,23 +42,28 @@ public class TerrainGenerator : MonoBehaviour
 
     public List<TerrainSprite> spriteList;
 
-    private Vector2 spriteOffset;
+    public Vector2 spriteOffset;
     private Dictionary<Vector2, GameObject> objectMap;
 
     private Vector2 followedCurrentPosition;
 
+    public int orderingOffset { get; set; }
     private static float a;
-    private int orderingOffset;
     private bool updateOffset;
     private int mapSize;
 
-    // Use this for initialization
-    void Start()
+    void Awake()
     {
         spriteOffset.x = sprite.bounds.extents.x;
         spriteOffset.y = sprite.bounds.extents.y / 2;
 
         mapSize = (int)(size.x * 2 * size.y * 2);
+        updateOffset = false;
+    }
+
+    // Use this for initialization
+    void Start()
+    {
         objectMap = new Dictionary<Vector2, GameObject>(mapSize, new Vector2Comparer());
 
         for (int y = (int)-size.y; y < size.y; y++)
@@ -68,8 +75,6 @@ public class TerrainGenerator : MonoBehaviour
         }
 
         followedCurrentPosition = FromIsometric(followed.transform.position.x, followed.transform.position.y);
-
-        updateOffset = false;
     }
 
     // Update is called once per frame
@@ -122,21 +127,47 @@ public class TerrainGenerator : MonoBehaviour
             type = TerrainType.ROCK;
         }
 
-        GameObject go = new GameObject("Terrain " + x + ", " + y);
+        //if (type == TerrainType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
+        //{
+        //    AddTree(x, y);
+        //}
+        //else
+        {
+            objectMap[new Vector2(x, y)] = AddSprite("Terrain " + x + ", " + y, type, 0, x, y, gameObject.transform, false);
+        }
+
+
+    }
+
+    private void AddTree(int x, int y)
+    {
+        //Add tree wood
+
+    }
+
+    public GameObject AddSprite(string name, TerrainType type, int sortingPriority, int x, int y, Transform parent, bool ascendingSorting)
+    {
+        GameObject go = new GameObject(name);
         go.tag = "Voxel";
-        objectMap[new Vector2(x, y)] = go;
 
         SpriteRenderer renderer = go.AddComponent<SpriteRenderer>();
         renderer.sprite = FindSprite(type);
         renderer.sortingLayerName = "Terrain";
-        renderer.sortingOrder = -(x + orderingOffset) * (int)size.y + -(y + orderingOffset);
+        renderer.sortingOrder = ((ascendingSorting ? 1 : -1) * (x + orderingOffset) * (int)size.y + -(y + orderingOffset)) + sortingPriority;
         go.transform.position = ToIsometric(x, y);
-        go.transform.parent = gameObject.transform;
+        go.transform.parent = parent;
 
         if (Mathf.Abs(renderer.sortingOrder) > 32000)
         {
             updateOffset = true;
         }
+
+        return go;
+    }
+
+    public void RemoveObject(GameObject go)
+    {
+        DestroyObject(go);
     }
 
     private void RemoveVoxel(int x, int y)
@@ -153,18 +184,18 @@ public class TerrainGenerator : MonoBehaviour
         objectMap[pos] = null;
     }
 
-    private Vector2 ToIsometric(float x, float y)
+    public Vector2 ToIsometric(float x, float y)
     {
         return new Vector2((x - y) * spriteOffset.x, (x + y) * spriteOffset.y);
     }
 
-    private Vector2 FromIsometric(float x, float y)
+    public Vector2 FromIsometric(float x, float y)
     {
         return new Vector2(floorRound((x / spriteOffset.x + y / spriteOffset.y) / 2),
             floorRound((y / spriteOffset.y - (x / spriteOffset.x)) / 2));
     }
 
-    private Sprite FindSprite(TerrainType type)
+    public Sprite FindSprite(TerrainType type)
     {
         foreach (TerrainSprite sprite in spriteList)
         {
@@ -186,7 +217,6 @@ public class TerrainGenerator : MonoBehaviour
 
         if (movement.x >= 1.0f)
         {
-            Debug.Log("Moving terrain " + movement.x + " unit(s) to right");
             //Move right
 
             for (int y = (int)-size.y; y < size.y; y++)
@@ -203,8 +233,7 @@ public class TerrainGenerator : MonoBehaviour
         }
         else if (movement.x <= -1.0f)
         {
-            Debug.Log("Moving terrain " + movement.x + " unit(s) to left");
-            //Move right
+            //Move left
 
             followedCurrentPosition.x += movement.x;
 
@@ -221,8 +250,7 @@ public class TerrainGenerator : MonoBehaviour
 
         if (movement.y >= 1.0f)
         {
-            Debug.Log("Moving terrain " + movement.y + " unit(s) to up");
-            //Move right
+            //Move up
 
             for (int x = (int)-size.x; x < size.x; x++)
             {
@@ -238,7 +266,6 @@ public class TerrainGenerator : MonoBehaviour
         }
         else if (movement.y <= -1.0f)
         {
-            Debug.Log("Moving terrain " + movement.y + " unit(s) to down");
             //Move down
 
             followedCurrentPosition.y += movement.y;
