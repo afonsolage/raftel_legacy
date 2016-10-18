@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 
-public enum TerrainType
+public enum VoxelType
 {
     GRASS,
     ROCK,
@@ -13,10 +13,10 @@ public enum TerrainType
 }
 
 [System.Serializable]
-public struct TerrainSprite
+public struct TerrainVoxel
 {
-    public TerrainType type;
-    public Sprite sprite;
+    public VoxelType type;
+    public GameObject prefab;
 }
 
 public class Vector2Comparer : IEqualityComparer<Vector2>
@@ -34,18 +34,13 @@ public class Vector2Comparer : IEqualityComparer<Vector2>
 
 public class TerrainGenerator : MonoBehaviour
 {
-    public Sprite sprite;
-
     public Vector2 size;
-
     public Transform followed;
 
-    public List<TerrainSprite> spriteList;
-
-    public Vector2 spriteOffset;
+    public List<TerrainVoxel> voxelList;
     private Dictionary<Vector2, GameObject> objectMap;
 
-    private Vector2 followedCurrentPosition;
+    private Vector3 followedCurrentPosition;
 
     public int orderingOffset { get; set; }
     private static float a;
@@ -54,9 +49,6 @@ public class TerrainGenerator : MonoBehaviour
 
     void Awake()
     {
-        spriteOffset.x = sprite.bounds.extents.x;
-        spriteOffset.y = sprite.bounds.extents.y / 2;
-
         mapSize = (int)(size.x * 2 * size.y * 2);
         updateOffset = false;
     }
@@ -74,69 +66,59 @@ public class TerrainGenerator : MonoBehaviour
             }
         }
 
-        followedCurrentPosition = FromIsometric(followed.transform.position.x, followed.transform.position.y);
+        followedCurrentPosition = followed.transform.position;
     }
 
     // Update is called once per frame
     void Update()
     {
-        Vector2 pos = FromIsometric(followed.transform.position.x, followed.transform.position.y);
+        Vector3 pos = followed.transform.position;
 
         pos -= followedCurrentPosition;
 
+        pos.x = floorRound(pos.x);
+        pos.y = floorRound(pos.y);
+        pos.z = floorRound(pos.z);
+
         Move(pos);
-
-        //If sorting layer is near the int limits, let's reorder adding a offset to get away from limit.
-        if (updateOffset)
-        {
-            orderingOffset = (orderingOffset == 0) ? 10000 : 0;
-
-            foreach (KeyValuePair<Vector2, GameObject> pair in objectMap)
-            {
-                if (pair.Value == null)
-                    continue;
-
-                SpriteRenderer r = pair.Value.GetComponent<SpriteRenderer>();
-
-                if (r != null)
-                {
-                    r.sortingOrder = -((int)pair.Key.x + orderingOffset) * (int)size.y + -((int)pair.Key.y + orderingOffset);
-                }
-            }
-
-            updateOffset = false;
-        }
     }
 
     private void AddVoxel(int x, int y)
     {
-        TerrainType type = TerrainType.GRASS;
+        VoxelType type = VoxelType.GRASS;
 
         double noise = TerrainNoise.getHeight(x, y) * 10;
 
         if (noise < 0f)
         {
-            type = TerrainType.GRASS;
+            type = VoxelType.GRASS;
         }
         else if (noise < 2f)
         {
-            type = TerrainType.DIRT;
+            type = VoxelType.DIRT;
         }
         else
         {
-            type = TerrainType.ROCK;
+            type = VoxelType.ROCK;
         }
 
-
-        if (type == TerrainType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
+        if (type == VoxelType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
         {
             bool isNeighborTree = false;
 
+            int r = UnityEngine.Random.Range(0, 100);
+
+            int trunkHeight = (r > 90) ? 6 : (r > 70) ? 5 : (r > 50) ? 4 : 3;
+
+            r = UnityEngine.Random.Range(0, 100);
+
+            int leafHeight = (r > 90) ? 5 : (r > 70) ? 4 : (r > 50) ? 3 : 2;
+
             GameObject go;
             Vector2 p;
-            for (int a = -3; a <= 3; a++)
+            for (int a = -leafHeight; a <= leafHeight; a++)
             {
-                for (int b = -3; b <= 3; b++)
+                for (int b = -leafHeight; b <= leafHeight; b++)
                 {
                     p = new Vector2(x + a, y + b);
                     if (objectMap.TryGetValue(p, out go) && go != null && go.GetComponent<VoxelTree>() != null)
@@ -149,51 +131,38 @@ public class TerrainGenerator : MonoBehaviour
 
             if (!isNeighborTree)
             {
-                AddTree(x, y);
+                AddTree(x, y, trunkHeight, trunkHeight + leafHeight);
                 return;
             }
         }
 
-
-
-        Vector2 tmp = ToIsometric(x, y);
-        objectMap[new Vector2(x, y)] = AddSprite("Terrain " + x + ", " + y, type, tmp.x, tmp.y, gameObject.transform);
-
+        objectMap[new Vector2(x, y)] = AddCube("Terrain " + x + ", " + y, type, x, 0, y, gameObject.transform);
     }
 
-    private void AddTree(int x, int y)
+    private void AddTree(int x, int y, int trunkHeight, int leafHeight)
     {
         //Add tree wood
         GameObject tree = new GameObject("Terrain Tree " + x + ", " + y);
         objectMap[new Vector2(x, y)] = tree;
 
-        tree.transform.position = new Vector3(x, y, 0);
+        tree.transform.position = new Vector3(x, 0, y);
         tree.transform.parent = gameObject.transform;
 
         VoxelTree v = tree.AddComponent<VoxelTree>();
-        v.trunk_height = 4;
-        v.leaf_height = 6;
+        v.trunk_height = trunkHeight;
+        v.leaf_height = leafHeight;
         v.generator = this;
     }
 
-    public GameObject AddSprite(string name, TerrainType type, float x, float y, float z, int sortingOrder, Transform parent)
+    public GameObject AddCube(string name, VoxelType type, float x, float y, float z, Transform parent)
     {
-        GameObject go = new GameObject(name);
+        GameObject go = Instantiate(FindVoxel(type));
         go.tag = "Voxel";
-
-        SpriteRenderer renderer = go.AddComponent<SpriteRenderer>();
-        renderer.sprite = FindSprite(type);
-        renderer.sortingLayerName = "Terrain";
-        renderer.sortingOrder = 0;
-        go.transform.position = new Vector3(x, y, z);
+        go.name = name;
         go.transform.parent = parent;
+        go.transform.localPosition = new Vector3(x, y, z);
 
         return go;
-    }
-
-    public GameObject AddSprite(string name, TerrainType type, float x, float y, Transform parent)
-    {
-        return AddSprite(name, type, x, y, y, 0, parent);
     }
 
     public void RemoveObject(GameObject go)
@@ -215,41 +184,27 @@ public class TerrainGenerator : MonoBehaviour
         objectMap[pos] = null;
     }
 
-    public Vector2 ToIsometric(float x, float y, float z)
+    public GameObject FindVoxel(VoxelType type)
     {
-        return new Vector3((x - y) * spriteOffset.x, (x + y) * spriteOffset.y, (x + z) * spriteOffset.y);
-    }
-
-    public Vector2 ToIsometric(float x, float y)
-    {
-        return new Vector2((x - y) * spriteOffset.x, (x + y) * spriteOffset.y);
-    }
-
-    public Vector2 FromIsometric(float x, float y)
-    {
-        return new Vector2(floorRound((x / spriteOffset.x + y / spriteOffset.y) / 2),
-            floorRound((y / spriteOffset.y - (x / spriteOffset.x)) / 2));
-    }
-
-    public Sprite FindSprite(TerrainType type)
-    {
-        foreach (TerrainSprite sprite in spriteList)
+        foreach (TerrainVoxel voxel in voxelList)
         {
-            if (sprite.type == type)
-                return sprite.sprite;
+            if (voxel.type == type)
+                return voxel.prefab;
         }
 
         Debug.LogError("Invalid TerrainType: " + type);
-        return spriteList[0].sprite;
+        return voxelList[0].prefab;
     }
 
-    private void Move(Vector2 movement)
+    private void Move(Vector3 movement)
     {
 
-        if (movement.x == 0 && movement.y == 0)
+        if (movement.x == 0 && movement.z == 0)
         {
             return;
         }
+
+        Debug.Log("Moving: " + movement);
 
         if (movement.x >= 1.0f)
         {
@@ -257,12 +212,12 @@ public class TerrainGenerator : MonoBehaviour
 
             for (int y = (int)-size.y; y < size.y; y++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.y + y));
+                RemoveVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
             }
 
             for (int y = (int)-size.y; y < size.y; y++)
             {
-                AddVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.y + y));
+                AddVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
             }
 
             followedCurrentPosition.x += movement.x;
@@ -275,45 +230,45 @@ public class TerrainGenerator : MonoBehaviour
 
             for (int y = (int)-size.y; y < size.y; y++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.y + y));
+                RemoveVoxel((int)(followedCurrentPosition.x + size.x), (int)(followedCurrentPosition.z + y));
             }
 
             for (int y = (int)-size.y; y < size.y; y++)
             {
-                AddVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.y + y));
+                AddVoxel((int)(followedCurrentPosition.x - size.x), (int)(followedCurrentPosition.z + y));
             }
         }
 
-        if (movement.y >= 1.0f)
+        if (movement.z >= 1.0f)
         {
             //Move up
 
             for (int x = (int)-size.x; x < size.x; x++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.y - size.y));
+                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
             }
 
             for (int x = (int)-size.x; x < size.x; x++)
             {
-                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.y + size.y));
+                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
             }
 
-            followedCurrentPosition.y += movement.y;
+            followedCurrentPosition.z += movement.z;
         }
-        else if (movement.y <= -1.0f)
+        else if (movement.z <= -1.0f)
         {
             //Move down
 
-            followedCurrentPosition.y += movement.y;
+            followedCurrentPosition.z += movement.z;
 
             for (int x = (int)-size.x; x < size.x; x++)
             {
-                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.y + size.y));
+                RemoveVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z + size.y));
             }
 
             for (int x = (int)-size.x; x < size.x; x++)
             {
-                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.y - size.y));
+                AddVoxel((int)(followedCurrentPosition.x + x), (int)(followedCurrentPosition.z - size.y));
             }
 
         }

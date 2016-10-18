@@ -12,7 +12,7 @@ public class SimpleController : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"), 0);
+        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
         move *= Time.deltaTime * speed;
 
         transform.position += move;
