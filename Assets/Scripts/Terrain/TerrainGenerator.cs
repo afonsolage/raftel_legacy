@@ -127,25 +127,56 @@ public class TerrainGenerator : MonoBehaviour
             type = TerrainType.ROCK;
         }
 
-        //if (type == TerrainType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
-        //{
-        //    AddTree(x, y);
-        //}
-        //else
+
+        if (type == TerrainType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
         {
-            objectMap[new Vector2(x, y)] = AddSprite("Terrain " + x + ", " + y, type, 0, x, y, gameObject.transform, false);
+            bool isNeighborTree = false;
+
+            GameObject go;
+            Vector2 p;
+            for (int a = -3; a <= 3; a++)
+            {
+                for (int b = -3; b <= 3; b++)
+                {
+                    p = new Vector2(x + a, y + b);
+                    if (objectMap.TryGetValue(p, out go) && go != null && go.GetComponent<VoxelTree>() != null)
+                    {
+                        isNeighborTree = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isNeighborTree)
+            {
+                AddTree(x, y);
+                return;
+            }
         }
 
+
+
+        Vector2 tmp = ToIsometric(x, y);
+        objectMap[new Vector2(x, y)] = AddSprite("Terrain " + x + ", " + y, type, tmp.x, tmp.y, gameObject.transform);
 
     }
 
     private void AddTree(int x, int y)
     {
         //Add tree wood
+        GameObject tree = new GameObject("Terrain Tree " + x + ", " + y);
+        objectMap[new Vector2(x, y)] = tree;
 
+        tree.transform.position = new Vector3(x, y, 0);
+        tree.transform.parent = gameObject.transform;
+
+        VoxelTree v = tree.AddComponent<VoxelTree>();
+        v.trunk_height = 4;
+        v.leaf_height = 6;
+        v.generator = this;
     }
 
-    public GameObject AddSprite(string name, TerrainType type, int sortingPriority, int x, int y, Transform parent, bool ascendingSorting)
+    public GameObject AddSprite(string name, TerrainType type, float x, float y, float z, int sortingOrder, Transform parent)
     {
         GameObject go = new GameObject(name);
         go.tag = "Voxel";
@@ -153,16 +184,16 @@ public class TerrainGenerator : MonoBehaviour
         SpriteRenderer renderer = go.AddComponent<SpriteRenderer>();
         renderer.sprite = FindSprite(type);
         renderer.sortingLayerName = "Terrain";
-        renderer.sortingOrder = ((ascendingSorting ? 1 : -1) * (x + orderingOffset) * (int)size.y + -(y + orderingOffset)) + sortingPriority;
-        go.transform.position = ToIsometric(x, y);
+        renderer.sortingOrder = 0;
+        go.transform.position = new Vector3(x, y, z);
         go.transform.parent = parent;
 
-        if (Mathf.Abs(renderer.sortingOrder) > 32000)
-        {
-            updateOffset = true;
-        }
-
         return go;
+    }
+
+    public GameObject AddSprite(string name, TerrainType type, float x, float y, Transform parent)
+    {
+        return AddSprite(name, type, x, y, y, 0, parent);
     }
 
     public void RemoveObject(GameObject go)
@@ -182,6 +213,11 @@ public class TerrainGenerator : MonoBehaviour
         go.transform.parent = null;
         DestroyObject(go);
         objectMap[pos] = null;
+    }
+
+    public Vector2 ToIsometric(float x, float y, float z)
+    {
+        return new Vector3((x - y) * spriteOffset.x, (x + y) * spriteOffset.y, (x + z) * spriteOffset.y);
     }
 
     public Vector2 ToIsometric(float x, float y)
