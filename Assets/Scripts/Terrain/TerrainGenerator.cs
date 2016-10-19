@@ -48,12 +48,12 @@ public class TerrainGenerator : MonoBehaviour
     void Awake()
     {
         mapSize = (int)(size.x * 2 * size.y * 2);
+        objectMap = new Dictionary<Vector2, GameObject>(mapSize, new Vector2Comparer());
     }
 
     // Use this for initialization
     void Start()
     {
-        objectMap = new Dictionary<Vector2, GameObject>(mapSize, new Vector2Comparer());
 
         for (int y = (int)-size.y; y < size.y; y++)
         {
@@ -169,8 +169,15 @@ public class TerrainGenerator : MonoBehaviour
 
     private void RemoveVoxel(int x, int y)
     {
-        GameObject go;
+        GameObject go = null;
         Vector2 pos = new Vector2(x, y);
+
+        if (objectMap == null)
+        {
+            Debug.LogError("Object Map is null!!");
+            return;
+        }
+
         if (!objectMap.TryGetValue(pos, out go) || go == null)
         {
             return;
