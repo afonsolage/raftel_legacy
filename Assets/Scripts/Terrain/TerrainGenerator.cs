@@ -43,14 +43,11 @@ public class TerrainGenerator : MonoBehaviour
     private Dictionary<Vector2, GameObject> objectMap;
     private Vector3 followedCurrentPosition;
 
-    public int orderingOffset { get; set; }
-    private bool updateOffset;
     private int mapSize;
 
     void Awake()
     {
         mapSize = (int)(size.x * 2 * size.y * 2);
-        updateOffset = false;
     }
 
     // Use this for initialization
