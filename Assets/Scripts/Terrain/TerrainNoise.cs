@@ -19,7 +19,7 @@ public class TerrainNoise
         {
             normalizeFactor += amplitude;
 
-            noise += amplitude * plexNoise.Evaluate(frequence * x, frequence * y, frequence * z);
+            noise += amplitude * plexNoise.Evaluate(frequence * x, frequence * y);//, frequence * z);
             frequence *= 2;
             amplitude *= persistence;
         }
@@ -29,6 +29,6 @@ public class TerrainNoise
 
     public static double getHeight(int x, int z)
     {
-        return eval(x, z, 0, 0.004, 3, 0.75);
+        return eval(x, z, 0, 0.004, 4, 0.60);
     }
 }

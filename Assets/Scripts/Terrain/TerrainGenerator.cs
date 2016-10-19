@@ -5,9 +5,11 @@ using System;
 
 public enum VoxelType
 {
+    WATER,
+    DIRT,
     GRASS,
     ROCK,
-    DIRT,
+    SNOW,
     WOOD,
     LEAF,
 }
@@ -45,6 +47,9 @@ public class TerrainGenerator : MonoBehaviour
 
     private int mapSize;
 
+    private float minNoise;
+    private float maxNoise;
+
     void Awake()
     {
         mapSize = (int)(size.x * 2 * size.y * 2);
@@ -62,6 +67,8 @@ public class TerrainGenerator : MonoBehaviour
                 AddVoxel(x, y);
             }
         }
+
+        Debug.Log("Min noise: " + minNoise + ", Max noise: " + maxNoise);
 
         followedCurrentPosition = followed.transform.position;
     }
@@ -84,54 +91,68 @@ public class TerrainGenerator : MonoBehaviour
     {
         VoxelType type = VoxelType.GRASS;
 
-        double noise = TerrainNoise.getHeight(x, y) * 10;
+        float noise = (float)TerrainNoise.getHeight(x, y);
 
-        if (noise < 0f)
+        if (noise < minNoise)
+            minNoise = noise;
+
+        if (noise > maxNoise)
+            maxNoise = noise;
+
+        if (noise < -0.3f)
         {
-            type = VoxelType.GRASS;
+            type = VoxelType.WATER;
         }
-        else if (noise < 2f)
+        else if (noise < -0.1f)
         {
             type = VoxelType.DIRT;
         }
-        else
+        else if (noise < 0.3f)
+        {
+            type = VoxelType.GRASS;
+        }
+        else if (noise < 0.5f)
         {
             type = VoxelType.ROCK;
         }
-
-        if (type == VoxelType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
+        else
         {
-            bool isNeighborTree = false;
-
-            int r = UnityEngine.Random.Range(0, 100);
-
-            int trunkHeight = (r > 90) ? 6 : (r > 70) ? 5 : (r > 50) ? 4 : 3;
-
-            r = UnityEngine.Random.Range(0, 100);
-
-            int leafHeight = (r > 90) ? 5 : (r > 70) ? 4 : (r > 50) ? 3 : 2;
-
-            GameObject go;
-            Vector2 p;
-            for (int a = -leafHeight; a <= leafHeight; a++)
-            {
-                for (int b = -leafHeight; b <= leafHeight; b++)
-                {
-                    p = new Vector2(x + a, y + b);
-                    if (objectMap.TryGetValue(p, out go) && go != null && go.GetComponent<VoxelTree>() != null)
-                    {
-                        isNeighborTree = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!isNeighborTree)
-            {
-                AddTree(x, y, trunkHeight, trunkHeight + leafHeight);
-                return;
-            }
+            type = VoxelType.SNOW;
         }
+
+        //if (type == VoxelType.GRASS && UnityEngine.Random.Range(0, 100) < 5)
+        //{
+        //    bool isNeighborTree = false;
+
+        //    int r = UnityEngine.Random.Range(0, 100);
+
+        //    int trunkHeight = (r > 90) ? 6 : (r > 70) ? 5 : (r > 50) ? 4 : 3;
+
+        //    r = UnityEngine.Random.Range(0, 100);
+
+        //    int leafHeight = (r > 90) ? 5 : (r > 70) ? 4 : (r > 50) ? 3 : 2;
+
+        //    GameObject go;
+        //    Vector2 p;
+        //    for (int a = -leafHeight; a <= leafHeight; a++)
+        //    {
+        //        for (int b = -leafHeight; b <= leafHeight; b++)
+        //        {
+        //            p = new Vector2(x + a, y + b);
+        //            if (objectMap.TryGetValue(p, out go) && go != null && go.GetComponent<VoxelTree>() != null)
+        //            {
+        //                isNeighborTree = true;
+        //                break;
+        //            }
+        //        }
+        //    }
+
+        //    if (!isNeighborTree)
+        //    {
+        //        AddTree(x, y, trunkHeight, trunkHeight + leafHeight);
+        //        return;
+        //    }
+        //}
 
         objectMap[new Vector2(x, y)] = AddCube("Terrain " + x + ", " + y, type, x, 0, y, gameObject.transform);
     }
@@ -213,6 +234,8 @@ public class TerrainGenerator : MonoBehaviour
         effectRenderer.material = renderer.material;
 
         effect.transform.position = go.transform.position;
+
+        Destroy(go);
     }
 
     private void Move(Vector3 movement)

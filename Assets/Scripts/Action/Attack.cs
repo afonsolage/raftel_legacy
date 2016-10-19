@@ -2,6 +2,7 @@
 
 public class Attack : MonoBehaviour
 {
+    public TerrainGenerator generator;
 
     // Use this for initialization
     void Start()
@@ -15,15 +16,17 @@ public class Attack : MonoBehaviour
         if (Input.GetButtonUp("Fire1"))
         {
             Vector3 pos = transform.position;
-            //pos.y += 0.5f;
+            pos.y += 1f;
             RaycastHit hit;
 
-            if (Physics.Raycast(pos, transform.forward, out hit, 1f))
+            Debug.Log("Raycasting from: " + pos + " into: " + transform.forward);
+
+            if (Physics.Raycast(pos, transform.forward, out hit, 2f))
             {
                 GameObject go = hit.transform.gameObject;
                 if (go != null)
                 {
-                    Debug.Log("Attacking: " + go.name);
+                    generator.AddDestroyCubeEffect(go);
                 }
             }
         }
